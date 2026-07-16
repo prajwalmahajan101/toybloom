@@ -1,0 +1,32 @@
+# Binaries
+/bin/
+/dist/
+*.exe
+*.out
+bloomfilter
+
+# Go
+*.test
+*.prof
+coverage.txt
+coverage.out
+vendor/
+go.work
+go.work.sum
+
+# Env / secrets
+.env
+.env.local
+*.local
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Observability / local data volumes
+/deploy/**/data/
+grafana-data/
+prometheus-data/
+tempo-data/
+loki-data/

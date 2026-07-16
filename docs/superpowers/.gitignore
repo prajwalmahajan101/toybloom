@@ -1,0 +1,4 @@
+# Superpowers skill working artifacts (incl. specs) are kept LOCAL only,
+# not tracked in git. Only this .gitignore marker is committed.
+*
+!.gitignore
