@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Pre-commit quality gate for the bloomfilter project.
+# Enable once per clone with:  git config core.hooksPath .githooks
+set -euo pipefail
+
+echo "▶ pre-commit checks"
+
+# 1. gofmt — only the staged Go files, fail if any need formatting.
+staged_go="$(git diff --cached --name-only --diff-filter=ACM -- '*.go')"
+if [ -n "$staged_go" ]; then
+	unformatted="$(gofmt -l $staged_go || true)"
+	if [ -n "$unformatted" ]; then
+		echo "✗ gofmt: these files are not formatted:"
+		echo "$unformatted" | sed 's/^/    /'
+		echo "  fix with: gofmt -w $unformatted"
+		exit 1
+	fi
+	echo "✓ gofmt"
+fi
+
+# 2. go vet — cheap correctness checks across the module.
+echo "▶ go vet ./..."
+go vet ./...
+echo "✓ go vet"
+
+# 3. go test — the suite must pass before a commit lands.
+echo "▶ go test ./..."
+go test ./...
+echo "✓ go test"
+
+# 4. golangci-lint — the standard aggregate linter, if installed.
+if command -v golangci-lint >/dev/null 2>&1; then
+	echo "▶ golangci-lint run"
+	golangci-lint run
+	echo "✓ golangci-lint"
+else
+	echo "• golangci-lint not installed — skipping (see https://golangci-lint.run/welcome/install/)"
+fi
+
+echo "✓ pre-commit passed"
