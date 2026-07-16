@@ -9,6 +9,7 @@ Design and decision records for the dynamic (scalable) bloom filter service.
 | [HLD.md](./HLD.md) | High-level design — architecture, components, data flow, sharding, observability, failure modes. |
 | [LLD.md](./LLD.md) | Low-level design — sizing math, hashing, sharding constants, keyspace, interfaces, algorithms, API contract, OTel instruments. |
 | [RFC.md](./RFC.md) | Proposal — motivation, alternatives considered, drawbacks, rollout, open questions. |
+| [ROADMAP.md](./ROADMAP.md) | Milestone-by-milestone build plan (M0–M10) with deliverables, acceptance criteria, and definition of done. |
 
 ## Architecture Decision Records
 [ADR/](./ADR/README.md) — numbered, immutable records of the key decisions
