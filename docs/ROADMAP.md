@@ -10,8 +10,8 @@ observability last.
 ## Phase 1 — Core library (no Valkey, no HTTP)
 | # | Milestone | Deliverable | Acceptance | Status |
 |---|-----------|-------------|------------|--------|
-| M0 | Project init | `go.mod`, deps (gin, xxhash, valkey-go), folder layout | `go build ./...` clean | ☐ |
-| M1 | Sizing math | `internal/bloom/sizing.go` — `OptimalM/K`, `StageError`, `StageCapacity` | unit tests match self-check table | ☐ |
+| M0 | Project init | `go.mod`, deps (gin, xxhash, valkey-go), folder layout | `go build ./...` clean | ☑ |
+| M1 | Sizing math | `internal/bloom/sizing.go` — `OptimalM/K`, `StageError`, `StageCapacity` | unit tests match self-check table | ☑ |
 | M2 | Double hashing | `internal/bloom/hash.go` — `hashParts`, `positions` | k positions, each `< m`, `h2==0` guarded | ☐ |
 | M3 | Sharding | `internal/bloom/shard.go` — `ShardBits`, `shardFor`, `groupByShard` | round-trip index↔(shard,offset) | ☐ |
 | M4 | BitStore interface | `internal/store/store.go` — interface only | compiles; documented contract | ☐ |
