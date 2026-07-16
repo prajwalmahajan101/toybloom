@@ -1,7 +1,6 @@
 # RFC — Dynamic (Scalable) Bloom Filter over Valkey
 
 **Status:** Proposed · **Author:** Prajwal Mahajan · **Date:** 2026-07-16
-Companion to [PRD](./PRD.md), [HLD](./HLD.md), [LLD](./LLD.md)
 
 ## 1. Summary
 Build a probabilistic membership service that, given `n` and `p`, provisions a

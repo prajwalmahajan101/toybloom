@@ -1,6 +1,6 @@
 # LLD — Dynamic (Scalable) Bloom Filter Service
 
-**Status:** Draft · **Date:** 2026-07-16 · Companion to [PRD](./PRD.md), [HLD](./HLD.md), [RFC](./RFC.md)
+**Status:** Draft · **Date:** 2026-07-16
 Module: `github.com/prajwalmahajan101/bloomfilter`
 
 ## 1. Sizing math (`internal/bloom/sizing.go`)

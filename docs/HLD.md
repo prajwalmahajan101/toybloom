@@ -1,6 +1,6 @@
 # HLD — Dynamic (Scalable) Bloom Filter Service
 
-**Status:** Draft · **Date:** 2026-07-16 · Companion to [PRD](./PRD.md), [LLD](./LLD.md), [RFC](./RFC.md)
+**Status:** Draft · **Date:** 2026-07-16
 
 ## 1. Overview
 A Go service exposing a Scalable Bloom Filter (SBF) over Valkey. `k` and `m` are
