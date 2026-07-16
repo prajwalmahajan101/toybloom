@@ -12,7 +12,7 @@ observability last.
 |---|-----------|-------------|------------|--------|
 | M0 | Project init | `go.mod`, deps (gin, xxhash, valkey-go), folder layout | `go build ./...` clean | ☑ |
 | M1 | Sizing math | `internal/bloom/sizing.go` — `OptimalM/K`, `StageError`, `StageCapacity` | unit tests match self-check table | ☑ |
-| M2 | Double hashing | `internal/bloom/hash.go` — `hashParts`, `positions` | k positions, each `< m`, `h2==0` guarded | ☐ |
+| M2 | Double hashing | `internal/bloom/hash.go` — `hashParts`, `positions` | k positions, each `< m`, `h2==0` guarded | ☑ |
 | M3 | Sharding | `internal/bloom/shard.go` — `ShardBits`, `shardFor`, `groupByShard` | round-trip index↔(shard,offset) | ☐ |
 | M4 | BitStore interface | `internal/store/store.go` — interface only | compiles; documented contract | ☐ |
 | M5 | SBF core | `internal/bloom/filter.go` — `New/Load/Add/Exists/Stats/Drop`, stage growth | works against an in-memory fake store | ☐ |
