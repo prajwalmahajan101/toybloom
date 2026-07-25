@@ -1,4 +1,4 @@
-module github.com/prajwalmahajan101/bloomfilter
+module github.com/prajwalmahajan101/toybloom
 
 go 1.26.3
 

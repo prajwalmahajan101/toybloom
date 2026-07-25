@@ -3,6 +3,7 @@
 /dist/
 *.exe
 *.out
+toybloom
 bloomfilter
 
 # Go
@@ -23,6 +24,10 @@ go.work.sum
 .idea/
 .vscode/
 .DS_Store
+
+# Agent / assistant local buffers
+.remember/
+.claude/
 
 # Observability / local data volumes
 /deploy/**/data/
