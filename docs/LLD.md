@@ -1,7 +1,7 @@
 # LLD — Dynamic (Scalable) Bloom Filter Service
 
 **Status:** Draft · **Date:** 2026-07-16
-Module: `github.com/prajwalmahajan101/bloomfilter`
+Module: `github.com/prajwalmahajan101/toybloom`
 
 ## 1. Sizing math (`internal/bloom/sizing.go`)
 Per stage, from expected items `n` and target error `p₀`:
@@ -13,8 +13,8 @@ Self-check (n=1,000,000): p=0.01 → m≈9,585,059 bits, k≈7 · p=0.001 → m�
 
 Functions:
 ```go
-func OptimalM(n uint64, p float64) uint64
-func OptimalK(n, m uint64) int
+func OptimalM(n uint64, p float64) (uint64, error)
+func OptimalK(n, m uint64) (int, error)
 ```
 
 ## 2. Scalable Bloom Filter parameters
@@ -35,7 +35,7 @@ g_i = (h1 + i*h2) mod m,   i = 0 .. k-1
 ```
 ```go
 func hashParts(item []byte) (h1, h2 uint64)
-func positions(item []byte, m uint64, k int) []uint64   // len == k, each < m
+func positions(h1, h2, m uint64, k int) []uint64   // len == k, each < m
 ```
 Guard: if `h2 == 0`, set `h2 = 1` to avoid a degenerate single-position sequence.
 
