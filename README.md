@@ -59,6 +59,18 @@ deploy            docker-compose provisioning (collector, prometheus, tempo, lok
 docs              PRD / HLD / LLD / RFC, ADRs, phase journal
 ```
 
+## Development
+
+Enable the pre-commit quality gate once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+On every commit it runs `gofmt` (staged Go files), `go vet ./...`, `go test ./...`,
+and `golangci-lint run` (skipped if not installed). Install golangci-lint from
+https://golangci-lint.run/welcome/install/.
+
 ## Documentation
 See [`docs/`](./docs/README.md) — [PRD](./docs/PRD.md), [HLD](./docs/HLD.md),
 [LLD](./docs/LLD.md), [RFC](./docs/RFC.md), [ADRs](./docs/ADR/README.md),

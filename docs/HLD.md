@@ -75,7 +75,7 @@ positions → `BitStore.GetBits` (pipelined GETBIT) → if all set, return true
 - p99 SLO panel + alert (< 200ms).
 
 ## 8. Deployment (local dev)
-`docker-compose up` starts: `valkey`, `bloomfilter` (the app), `otel-collector`,
+`docker-compose up` starts: `valkey`, `toybloom` (the app), `otel-collector`,
 `prometheus`, `tempo`, `loki`, `grafana`. Grafana datasources and the two
 dashboards (RED, Bloom internals) are auto-provisioned from `deploy/grafana/`.
 

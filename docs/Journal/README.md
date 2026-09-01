@@ -9,8 +9,8 @@ belong in code or commit messages.
 | Phase | Topic | Journal | Status |
 |-------|-------|---------|--------|
 | M0 | Project init (go.mod, layout, deps) | `M0.md` | pending |
-| M1 | Sizing math (OptimalM/K, stage params) | `M1.md` | pending |
-| M2 | Double hashing | `M2.md` | pending |
+| M1 | Sizing math (OptimalM/K, stage params) | `M1.md` | done |
+| M2 | Double hashing | `M2.md` | done |
 | M3 | Sharding addressing | `M3.md` | pending |
 | M4 | BitStore interface | `M4.md` | pending |
 | M5 | SBF core (Add/Exists/grow) | `M5.md` | pending |
