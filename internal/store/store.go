@@ -25,6 +25,9 @@ type BitStore interface {
 	// SAdd adds members to the set stored at key.
 	SAdd(ctx context.Context, key string, members ...string) error
 
+	// SRem removes members from the set stored at key.
+	SRem(ctx context.Context, key string, members ...string) error
+
 	// SMembers returns all members of the set stored at key.
 	SMembers(ctx context.Context, key string) ([]string, error)
 
