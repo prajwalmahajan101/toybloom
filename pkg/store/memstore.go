@@ -26,6 +26,8 @@ func NewMemStore() *MemStore {
 	}
 }
 
+func (m *MemStore) Ping(_ context.Context) error { return nil }
+
 func (m *MemStore) SetBits(_ context.Context, key string, offsets []uint64) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

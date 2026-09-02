@@ -28,6 +28,10 @@ func NewValkeyStore(client valkey.Client) *ValkeyStore {
 	return &ValkeyStore{client: client}
 }
 
+func (v *ValkeyStore) Ping(ctx context.Context) error {
+	return v.client.Do(ctx, v.client.B().Ping().Build()).Error()
+}
+
 func (v *ValkeyStore) SetBits(ctx context.Context, key string, offsets []uint64) error {
 	if len(offsets) == 0 {
 		return nil

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/prajwalmahajan101/toybloom/internal/store"
+	"github.com/prajwalmahajan101/toybloom/pkg/store"
 )
 
 var (

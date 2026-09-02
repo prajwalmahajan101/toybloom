@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/prajwalmahajan101/toybloom/internal/store"
+	"github.com/prajwalmahajan101/toybloom/pkg/store"
 )
 
 func newTestFilter(t *testing.T) (*Filter, *store.MemStore) {
