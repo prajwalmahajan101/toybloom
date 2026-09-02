@@ -37,4 +37,20 @@ else
 	echo "• golangci-lint not installed — skipping (see https://golangci-lint.run/welcome/install/)"
 fi
 
+# 5. codegen drift — when the OpenAPI spec or generated code is staged,
+# regenerate and fail if the committed output no longer matches the spec.
+# Mirrors the CI "codegen up-to-date" gate; scoped so unrelated commits stay fast.
+if git diff --cached --name-only --diff-filter=ACM | grep -qE '^(api/openapi\.yaml$|internal/api/gen/)'; then
+	echo "▶ go generate ./... (openapi codegen)"
+	go generate ./...
+	drift="$(git diff --name-only -- internal/api/gen)"
+	if [ -n "$drift" ]; then
+		echo "✗ generated code is out of date with api/openapi.yaml:"
+		echo "$drift" | sed 's/^/    /'
+		echo "  fix with: make generate && git add internal/api/gen"
+		exit 1
+	fi
+	echo "✓ codegen up to date"
+fi
+
 echo "✓ pre-commit passed"
