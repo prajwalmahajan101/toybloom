@@ -56,3 +56,19 @@ jobs:
           check-latest: true
       - name: build
         run: go build ./...
+
+  codegen:
+    name: codegen up-to-date
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          check-latest: true
+      # Regenerate from api/openapi.yaml and fail if the committed code differs —
+      # guarantees the generated server always matches the contract.
+      - name: go generate
+        run: go generate ./...
+      - name: verify no diff
+        run: git diff --exit-code || (echo "::error::generated code is stale — run 'make generate' and commit"; exit 1)
