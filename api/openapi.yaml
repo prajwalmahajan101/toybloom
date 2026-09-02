@@ -1,0 +1,407 @@
+openapi: 3.1.0
+info:
+  title: toybloom API
+  version: 0.1.0
+  description: |
+    HTTP API for the toybloom Scalable Bloom Filter service.
+
+    Every response body is a uniform envelope:
+    `{ success, message, data?, errors?, correlation_id }`. A correlation id is
+    generated per request (or propagated from the `X-Correlation-ID` request
+    header) and echoed in both the response body and the `X-Correlation-ID`
+    response header.
+
+    This spec is the source of truth for the wire contract. Cross-language
+    client SDKs (Python, JS/TS, Java, Go) are generated from it — see
+    `docs/clients.md`.
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+tags:
+  - name: filters
+    description: Create and query scalable bloom filters
+  - name: ops
+    description: Liveness / readiness probes
+
+paths:
+  /v1/filters:
+    post:
+      tags: [filters]
+      summary: Create a filter
+      operationId: createFilter
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFilterRequest'
+      responses:
+        '201':
+          description: Filter created
+          headers:
+            X-Correlation-ID:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/FilterInfo'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /v1/filters/{name}:
+    parameters:
+      - $ref: '#/components/parameters/FilterName'
+    get:
+      tags: [filters]
+      summary: Get filter stats
+      operationId: getFilter
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      responses:
+        '200':
+          description: Filter statistics
+          headers:
+            X-Correlation-ID:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/FilterStats'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [filters]
+      summary: Delete a filter
+      operationId: deleteFilter
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      responses:
+        '204':
+          description: Filter deleted (no body)
+          headers:
+            X-Correlation-ID:
+              $ref: '#/components/headers/CorrelationId'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/filters/{name}/items:
+    parameters:
+      - $ref: '#/components/parameters/FilterName'
+    post:
+      tags: [filters]
+      summary: Add an item to a filter
+      operationId: addItem
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddItemRequest'
+      responses:
+        '200':
+          description: Item added
+          headers:
+            X-Correlation-ID:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AddedResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/filters/{name}/items/{value}:
+    parameters:
+      - $ref: '#/components/parameters/FilterName'
+      - name: value
+        in: path
+        required: true
+        description: The value to test for membership.
+        schema:
+          type: string
+    get:
+      tags: [filters]
+      summary: Check whether an item is present
+      operationId: checkItem
+      description: |
+        Returns whether the value is possibly in the set. Bloom filters admit
+        false positives but never false negatives — `exists: false` is
+        definitive, `exists: true` is probabilistic.
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+      responses:
+        '200':
+          description: Membership result
+          headers:
+            X-Correlation-ID:
+              $ref: '#/components/headers/CorrelationId'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Envelope'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ExistsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /healthz:
+    get:
+      tags: [ops]
+      summary: Liveness probe
+      operationId: healthz
+      description: Returns 200 while the process is up. Never touches dependencies.
+      responses:
+        '200':
+          description: Alive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+
+  /readyz:
+    get:
+      tags: [ops]
+      summary: Readiness probe
+      operationId: readyz
+      description: Returns 200 when the storage backend (Valkey) is reachable, else 503.
+      responses:
+        '200':
+          description: Ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope'
+        '503':
+          description: Not ready (storage unreachable)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+components:
+  parameters:
+    FilterName:
+      name: name
+      in: path
+      required: true
+      description: Filter name. Must match `^[a-zA-Z0-9_-]{1,64}$`.
+      schema:
+        type: string
+        pattern: '^[a-zA-Z0-9_-]{1,64}$'
+    CorrelationIdHeader:
+      name: X-Correlation-ID
+      in: header
+      required: false
+      description: Optional client-supplied correlation id; generated if absent.
+      schema:
+        type: string
+
+  headers:
+    CorrelationId:
+      description: Correlation id for this request (echoes the request header or a generated one).
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    NotFound:
+      description: Filter not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Conflict:
+      description: Filter already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+
+  schemas:
+    Envelope:
+      type: object
+      description: Canonical success envelope.
+      required: [success, message, correlation_id]
+      properties:
+        success:
+          type: boolean
+          const: true
+        message:
+          type: string
+        data:
+          description: Endpoint-specific payload.
+          type: [object, 'null']
+        correlation_id:
+          type: string
+    ErrorEnvelope:
+      type: object
+      description: Canonical error envelope.
+      required: [success, message, errors, correlation_id]
+      properties:
+        success:
+          type: boolean
+          const: false
+        message:
+          type: string
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+        correlation_id:
+          type: string
+    ErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum: [INVALID_ARGUMENT, NOT_FOUND, ALREADY_EXISTS, INTERNAL, NOT_READY]
+        message:
+          type: string
+        field:
+          type: string
+
+    CreateFilterRequest:
+      type: object
+      required: [name, n, p]
+      properties:
+        name:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]{1,64}$'
+          examples: ['emails']
+        n:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Expected number of distinct items.
+          examples: [1000000]
+        p:
+          type: number
+          format: double
+          exclusiveMinimum: 0
+          exclusiveMaximum: 1
+          description: Target false-positive probability.
+          examples: [0.01]
+    AddItemRequest:
+      type: object
+      required: [value]
+      properties:
+        value:
+          type: string
+          examples: ['a@b.com']
+
+    FilterInfo:
+      type: object
+      description: Summary returned when a filter is created.
+      required: [name, stages, m, k]
+      properties:
+        name:
+          type: string
+        stages:
+          type: integer
+          description: Number of stages currently allocated.
+        m:
+          type: integer
+          format: int64
+          description: Bit-array size of the first stage.
+        k:
+          type: integer
+          description: Number of hash functions.
+    StageInfo:
+      type: object
+      required: [index, m, k, capacity, fill]
+      properties:
+        index:
+          type: integer
+        m:
+          type: integer
+          format: int64
+        k:
+          type: integer
+        capacity:
+          type: integer
+          format: int64
+        fill:
+          type: integer
+          format: int64
+    FilterStats:
+      type: object
+      required: [name, n, p, r, s, stage_count, stages]
+      properties:
+        name:
+          type: string
+        n:
+          type: integer
+          format: int64
+          description: Configured expected item count.
+        p:
+          type: number
+          format: double
+          description: Configured target false-positive probability.
+        r:
+          type: number
+          format: double
+          description: Tightening ratio between stages.
+        s:
+          type: number
+          format: double
+          description: Growth factor between stages.
+        stage_count:
+          type: integer
+        stages:
+          type: array
+          items:
+            $ref: '#/components/schemas/StageInfo'
+    AddedResponse:
+      type: object
+      required: [added]
+      properties:
+        added:
+          type: boolean
+    ExistsResponse:
+      type: object
+      required: [exists]
+      properties:
+        exists:
+          type: boolean

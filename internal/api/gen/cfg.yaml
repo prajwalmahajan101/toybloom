@@ -1,0 +1,9 @@
+package: gen
+output: gen.go
+generate:
+  models: true
+  gin-server: true
+  embedded-spec: true # exposes gen.GetSwagger() for the request validator
+output-options:
+  include-tags:
+    - filters # health/ready/metrics/docs stay hand-wired

@@ -1,0 +1,15 @@
+# Redocly lint config for api/openapi.yaml.
+#
+# We extend the recommended ruleset but relax a few opinionated rules that do
+# not match this API's current reality (rather than silencing real problems):
+#   - security-defined: the API has no authentication yet (see ADR-0006
+#     follow-ups). When auth lands, remove this override.
+#   - operation-4xx-response: /healthz and /readyz are probes; their contract is
+#     intentionally 2xx-only (/readyz's 503 is modelled, /healthz has no 4xx).
+#   - no-server-example.com: false-positives on the localhost dev server URL.
+extends:
+  - recommended
+rules:
+  security-defined: off
+  operation-4xx-response: off
+  no-server-example.com: off
