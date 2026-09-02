@@ -120,8 +120,10 @@ return redis.call('HINCRBY', KEYS[1], 'stage_count', 1)
 
 **Error envelope:**
 ```json
-{ "error": { "code": "INVALID_ARGUMENT", "message": "p must be in (0,1)", "correlation_id": "..." } }
+{ "correlation_id": "...", "error": { "code": "INVALID_ARGUMENT", "message": "p must be in (0,1)" } }
 ```
+`correlation_id` is a response-level field (top level) shared by success and
+error envelopes; success responses use `{ "correlation_id": "...", "data": {...} }`.
 Validation at the edge: `n ≥ 1`, `0 < p < 1`, `name` matches `^[a-zA-Z0-9_-]{1,64}$`.
 
 ## 10. Observability instruments (`internal/obs`)
