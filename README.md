@@ -1,4 +1,8 @@
-# bloomfilter — Dynamic (Scalable) Bloom Filter over Valkey
+# toybloom — Dynamic (Scalable) Bloom Filter over Valkey
+
+[![CI](https://github.com/prajwalmahajan101/toybloom/actions/workflows/ci.yml/badge.svg)](https://github.com/prajwalmahajan101/toybloom/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Go](https://img.shields.io/badge/Go-1.25%2B-00ADD8?logo=go)](https://go.dev/)
 
 A probabilistic membership service. Give it `n` (expected items) and `p` (target
 false-positive probability); it provisions a bloom filter with **dynamically
@@ -7,7 +11,7 @@ derived** `k` (hash functions) and `m` (bits), stores the bits in **Valkey**, an
 (Scalable Bloom Filter). Shipped as a Go library plus a thin **Gin** REST API,
 fully observable with **OpenTelemetry** (metrics + logs + traces) in **Grafana**.
 
-> Module: `github.com/prajwalmahajan101/bloomfilter`
+> Module: `github.com/prajwalmahajan101/toybloom`
 
 ## Why
 Exact "have we seen X?" checks over 100M–1B+ keys are slow and memory-heavy. A
@@ -19,7 +23,7 @@ rate and tiny storage — and this one holds that rate even as the dataset grows
 - Scalable Bloom Filter: auto-chains larger stages; compounded FPP ≤ `p`.
 - Double hashing (Kirsch–Mitzenmacher) over one xxhash128 digest.
 - Valkey-backed bit storage, sharded across 4MB keys for 1B+ scale.
-- Pluggable `BitStore` (Valkey primary; Memcached limited/secondary).
+- Pluggable `BitStore` interface (Valkey-backed; in-memory store for tests).
 - Multi-tenant: many independent named filters.
 - Full OTel observability, RED + bloom metrics, p99 SLO, Grafana dashboards.
 - Zero false negatives.
@@ -66,10 +70,15 @@ in [`test/load/RESULTS.md`](./test/load/RESULTS.md); run it with `make load`.
 ## Layout
 ```
 cmd/server        Gin REST entrypoint (+ OTel bootstrap)
-internal/bloom    SBF core (sizing, hashing, add/exists, stage growth)
-internal/store    BitStore interface + valkey + memcached
-internal/api      Gin handlers, envelopes, validation
+pkg/bloom         SBF core (sizing, hashing, add/exists, stage growth, sharding)
+pkg/store         BitStore interface + Valkey + in-memory implementations
+internal/api      Gin handlers, envelopes, validation, generated OpenAPI server
+internal/service  transport-agnostic service layer over bloom/store
+internal/core     config, structured logging, response envelope
 internal/obs      OTel providers + metric instruments
+internal/e2e      end-to-end + statistical correctness tests (build tag `e2e`)
+api               OpenAPI 3.1 contract (source of truth for codegen/clients)
+test/load         k6 load scenario + benchmark results
 deploy            docker-compose provisioning (collector, prometheus, tempo, loki, grafana)
 docs              PRD / HLD / LLD / RFC, ADRs, phase journal
 ```
@@ -92,4 +101,8 @@ See [`docs/`](./docs/README.md) — [PRD](./docs/PRD.md), [HLD](./docs/HLD.md),
 [Journal](./docs/Journal/README.md).
 
 ## Status
-Early, guided hand-build (milestones M0–M10). Not yet released.
+Early, guided hand-build — milestones M0–M10 complete (v1 Definition of Done met).
+First public cut tagged `v0.1.0`; pre-1.0, so the API may still change.
+
+## License
+[MIT](./LICENSE) © 2026 Prajwal Mahajan.
