@@ -3,10 +3,18 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 
+	"github.com/prajwalmahajan101/toybloom/internal/obs"
 	"github.com/prajwalmahajan101/toybloom/pkg/bloom"
 	"github.com/prajwalmahajan101/toybloom/pkg/store"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 )
+
+// tracer for service-level spans; no-op until obs.Setup installs a provider.
+var tracer = otel.Tracer("github.com/prajwalmahajan101/toybloom/internal/service")
 
 var (
 	ErrInvalidArgument = errors.New("service: invalid argument")
@@ -50,17 +58,40 @@ type FilterService interface {
 	Exists(ctx context.Context, name string, value []byte) (bool, error)
 	Stats(ctx context.Context, name string) (FilterStats, error)
 	Delete(ctx context.Context, name string) error
+	// FilterSamples reports the current filter observation (live count + per-filter
+	// gauge samples) for the observability layer's async callback. The per-filter
+	// samples are bounded by the cardinality cap; the count is the true total.
+	FilterSamples(ctx context.Context) obs.FilterObservation
 }
 
 type filterService struct {
 	store store.BitStore
+	inst  *obs.Instruments
+	// maxGauges caps how many per-filter gauge series FilterSamples emits, keeping
+	// the unbounded `filter` label from exploding metric cardinality. <= 0 = no cap.
+	maxGauges int
 }
 
-func New(s store.BitStore) FilterService {
-	return &filterService{store: s}
+func New(s store.BitStore, inst *obs.Instruments, maxGauges int) FilterService {
+	return &filterService{store: s, inst: inst, maxGauges: maxGauges}
 }
 
-func (s *filterService) Create(ctx context.Context, name string, n uint64, p float64) (FilterInfo, error) {
+// finishSpan closes a service span (recording an error status) and increments
+// the operation counter tagged with success/failure. One helper keeps every
+// method's telemetry identical.
+func (s *filterService) finishSpan(ctx context.Context, span trace.Span, op string, err error) {
+	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
+	}
+	span.End()
+	s.inst.RecordOp(ctx, op, err == nil)
+}
+
+func (s *filterService) Create(ctx context.Context, name string, n uint64, p float64) (_ FilterInfo, err error) {
+	ctx, span := tracer.Start(ctx, "FilterService.Create")
+	defer func() { s.finishSpan(ctx, span, "create", err) }()
+
 	f, err := bloom.New(ctx, s.store, name, n, p)
 	if err != nil {
 		return FilterInfo{}, mapErr(err)
@@ -69,18 +100,25 @@ func (s *filterService) Create(ctx context.Context, name string, n uint64, p flo
 	return FilterInfo{Name: st.Name, Stages: st.StageCount, M: st.Stages[0].M, K: st.Stages[0].K}, nil
 }
 
-func (s *filterService) Add(ctx context.Context, name string, value []byte) error {
+func (s *filterService) Add(ctx context.Context, name string, value []byte) (err error) {
+	ctx, span := tracer.Start(ctx, "FilterService.Add")
+	defer func() { s.finishSpan(ctx, span, "add", err) }()
+
 	f, err := bloom.Load(ctx, s.store, name)
 	if err != nil {
 		return mapErr(err)
 	}
-	if err := f.Add(ctx, value); err != nil {
+	if err = f.Add(ctx, value); err != nil {
 		return mapErr(err)
 	}
+	s.inst.RecordItemsAdded(ctx, 1)
 	return nil
 }
 
-func (s *filterService) Exists(ctx context.Context, name string, value []byte) (bool, error) {
+func (s *filterService) Exists(ctx context.Context, name string, value []byte) (_ bool, err error) {
+	ctx, span := tracer.Start(ctx, "FilterService.Exists")
+	defer func() { s.finishSpan(ctx, span, "exists", err) }()
+
 	f, err := bloom.Load(ctx, s.store, name)
 	if err != nil {
 		return false, mapErr(err)
@@ -92,7 +130,10 @@ func (s *filterService) Exists(ctx context.Context, name string, value []byte) (
 	return ok, nil
 }
 
-func (s *filterService) Stats(ctx context.Context, name string) (FilterStats, error) {
+func (s *filterService) Stats(ctx context.Context, name string) (_ FilterStats, err error) {
+	ctx, span := tracer.Start(ctx, "FilterService.Stats")
+	defer func() { s.finishSpan(ctx, span, "stats", err) }()
+
 	f, err := bloom.Load(ctx, s.store, name)
 	if err != nil {
 		return FilterStats{}, mapErr(err)
@@ -100,15 +141,54 @@ func (s *filterService) Stats(ctx context.Context, name string) (FilterStats, er
 	return toStats(f.Stats()), nil
 }
 
-func (s *filterService) Delete(ctx context.Context, name string) error {
+func (s *filterService) Delete(ctx context.Context, name string) (err error) {
+	ctx, span := tracer.Start(ctx, "FilterService.Delete")
+	defer func() { s.finishSpan(ctx, span, "delete", err) }()
+
 	f, err := bloom.Load(ctx, s.store, name)
 	if err != nil {
 		return mapErr(err)
 	}
-	if err := f.Drop(ctx); err != nil {
+	if err = f.Drop(ctx); err != nil {
 		return mapErr(err)
 	}
 	return nil
+}
+
+// FilterSamples enumerates live filters and computes each one's fill ratio and
+// estimated FPP for the fill_ratio / estimated_fpp observable gauges. It runs on
+// the metric-collection goroutine, so it stays cheap and never fails the whole
+// collection: a filter that vanished mid-scrape (Load miss) is skipped, not
+// fatal. The cardinality cap bounds how many filter series we emit.
+func (s *filterService) FilterSamples(ctx context.Context) obs.FilterObservation {
+	names, err := bloom.ListFilters(ctx, s.store)
+	if err != nil {
+		slog.Default().WarnContext(ctx, "filter gauge collection: list filters failed", "err", err)
+		return obs.FilterObservation{}
+	}
+	total := len(names) // true live count, reported before any cap truncation
+	if s.maxGauges > 0 && len(names) > s.maxGauges {
+		slog.Default().WarnContext(ctx, "filter gauge cardinality cap hit; truncating",
+			"live", len(names), "cap", s.maxGauges)
+		names = names[:s.maxGauges]
+	}
+
+	samples := make([]obs.FilterSample, 0, len(names))
+	for _, name := range names {
+		f, err := bloom.Load(ctx, s.store, name)
+		if err != nil {
+			slog.Default().DebugContext(ctx, "filter gauge collection: skipping filter",
+				"filter", name, "err", err)
+			continue
+		}
+		samples = append(samples, obs.FilterSample{
+			Name:         name,
+			FillRatio:    f.FillRatio(),
+			EstimatedFPP: f.EstimatedFPP(),
+			Items:        int64(f.Items()),
+		})
+	}
+	return obs.FilterObservation{Count: total, Samples: samples}
 }
 
 func toStats(st bloom.Stats) FilterStats {

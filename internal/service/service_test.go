@@ -5,11 +5,64 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/prajwalmahajan101/toybloom/internal/obs"
 	"github.com/prajwalmahajan101/toybloom/pkg/store"
 )
 
 func newService() FilterService {
-	return New(store.NewMemStore())
+	return New(store.NewMemStore(), nil, 0) // nil instruments: record helpers no-op; 0 = no gauge cap
+}
+
+func TestFilterSamples(t *testing.T) {
+	svc := newService()
+	ctx := context.Background()
+	for _, name := range []string{"a", "b", "c"} {
+		if _, err := svc.Create(ctx, name, 1000, 0.01); err != nil {
+			t.Fatalf("Create %q: %v", name, err)
+		}
+	}
+	// Load one filter with items so its fill ratio is observably non-zero.
+	if err := svc.Add(ctx, "a", []byte("x")); err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+
+	obsv := svc.FilterSamples(ctx)
+	if obsv.Count != 3 {
+		t.Fatalf("FilterSamples Count: want 3, got %d", obsv.Count)
+	}
+	if len(obsv.Samples) != 3 {
+		t.Fatalf("FilterSamples: want 3 samples, got %d", len(obsv.Samples))
+	}
+	byName := map[string]obs.FilterSample{}
+	for _, s := range obsv.Samples {
+		if s.FillRatio < 0 || s.EstimatedFPP < 0 || s.EstimatedFPP >= 1 {
+			t.Errorf("%s: out-of-range sample %+v", s.Name, s)
+		}
+		byName[s.Name] = s
+	}
+	if byName["a"].FillRatio <= 0 {
+		t.Errorf("filter a should have non-zero fill ratio, got %v", byName["a"].FillRatio)
+	}
+	if byName["a"].Items != 1 {
+		t.Errorf("filter a should have 1 item, got %d", byName["a"].Items)
+	}
+}
+
+func TestFilterSamples_CapTruncates(t *testing.T) {
+	svc := New(store.NewMemStore(), nil, 2) // cap of 2
+	ctx := context.Background()
+	for _, name := range []string{"a", "b", "c", "d"} {
+		if _, err := svc.Create(ctx, name, 1000, 0.01); err != nil {
+			t.Fatalf("Create %q: %v", name, err)
+		}
+	}
+	obsv := svc.FilterSamples(ctx)
+	if got := len(obsv.Samples); got != 2 {
+		t.Fatalf("FilterSamples with cap 2: want 2 samples, got %d", got)
+	}
+	if obsv.Count != 4 {
+		t.Fatalf("FilterSamples Count should be the true total 4, got %d", obsv.Count)
+	}
 }
 
 func TestCreate(t *testing.T) {
