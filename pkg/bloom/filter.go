@@ -209,6 +209,21 @@ func Load(ctx context.Context, s store.BitStore, name string) (*Filter, error) {
 		if err != nil {
 			return nil, err
 		}
+
+		// The hash's fill_count is only the creation-time seed; the live count is
+		// the atomic :fill counter that Add increments. Read it so Stats and the
+		// observability gauges reflect real load, not zero, on a fresh Load.
+		fillStr, ok, err := s.Get(ctx, stageMetaKey(name, i)+":fill")
+		if err != nil {
+			return nil, fmt.Errorf("bloom: read stage %d fill: %w", i, err)
+		}
+		if ok {
+			fill, err := strconv.ParseUint(fillStr, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("bloom: parse stage %d fill: %w", i, err)
+			}
+			stages[i].Fill = fill
+		}
 	}
 
 	return &Filter{

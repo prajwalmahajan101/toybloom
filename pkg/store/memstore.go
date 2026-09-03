@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"strconv"
 	"sync"
 )
 
@@ -82,6 +83,17 @@ func (m *MemStore) Incr(_ context.Context, key string) (int64, error) {
 	defer m.mu.Unlock()
 	m.counters[key]++
 	return m.counters[key], nil
+}
+
+func (m *MemStore) Get(_ context.Context, key string) (string, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	// The only string-valued keys in this store are the atomic :fill counters
+	// written by Incr, mirroring how Redis GET reads an INCR'd integer as a string.
+	if v, ok := m.counters[key]; ok {
+		return strconv.FormatInt(v, 10), true, nil
+	}
+	return "", false, nil
 }
 
 func (m *MemStore) SAdd(_ context.Context, key string, members ...string) error {
