@@ -22,6 +22,10 @@ type BitStore interface {
 	// new value. A non-existent key is treated as 0 before incrementing.
 	Incr(ctx context.Context, key string) (int64, error)
 
+	// Get returns the string value stored at key. The bool is false when the key
+	// does not exist (the string is empty and err is nil in that case).
+	Get(ctx context.Context, key string) (string, bool, error)
+
 	// SAdd adds members to the set stored at key.
 	SAdd(ctx context.Context, key string, members ...string) error
 

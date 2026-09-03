@@ -32,10 +32,12 @@ func (v *ValkeyStore) Ping(ctx context.Context) error {
 	return v.client.Do(ctx, v.client.B().Ping().Build()).Error()
 }
 
-func (v *ValkeyStore) SetBits(ctx context.Context, key string, offsets []uint64) error {
+func (v *ValkeyStore) SetBits(ctx context.Context, key string, offsets []uint64) (err error) {
 	if len(offsets) == 0 {
 		return nil
 	}
+	ctx, end := startSpan(ctx, "setbit")
+	defer end(&err)
 	cmds := make(valkey.Commands, len(offsets))
 	for i, off := range offsets {
 		cmds[i] = v.client.B().Setbit().Key(key).Offset(int64(off)).Value(1).Build()
@@ -48,10 +50,12 @@ func (v *ValkeyStore) SetBits(ctx context.Context, key string, offsets []uint64)
 	return nil
 }
 
-func (v *ValkeyStore) GetBits(ctx context.Context, key string, offsets []uint64) ([]bool, error) {
+func (v *ValkeyStore) GetBits(ctx context.Context, key string, offsets []uint64) (_ []bool, err error) {
 	if len(offsets) == 0 {
 		return []bool{}, nil
 	}
+	ctx, end := startSpan(ctx, "getbit")
+	defer end(&err)
 	cmds := make(valkey.Commands, len(offsets))
 	for i, off := range offsets {
 		cmds[i] = v.client.B().Getbit().Key(key).Offset(int64(off)).Build()
@@ -68,7 +72,9 @@ func (v *ValkeyStore) GetBits(ctx context.Context, key string, offsets []uint64)
 	return result, nil
 }
 
-func (v *ValkeyStore) HGetAll(ctx context.Context, key string) (map[string]string, error) {
+func (v *ValkeyStore) HGetAll(ctx context.Context, key string) (_ map[string]string, err error) {
+	ctx, end := startSpan(ctx, "hgetall")
+	defer end(&err)
 	m, err := v.client.Do(ctx, v.client.B().Hgetall().Key(key).Build()).AsStrMap()
 	if err != nil {
 		if valkey.IsValkeyNil(err) {
@@ -79,10 +85,12 @@ func (v *ValkeyStore) HGetAll(ctx context.Context, key string) (map[string]strin
 	return m, nil
 }
 
-func (v *ValkeyStore) HSet(ctx context.Context, key string, fields map[string]string) error {
+func (v *ValkeyStore) HSet(ctx context.Context, key string, fields map[string]string) (err error) {
 	if len(fields) == 0 {
 		return nil
 	}
+	ctx, end := startSpan(ctx, "hset")
+	defer end(&err)
 	cmd := v.client.B().Hset().Key(key).FieldValue()
 	for f, val := range fields {
 		cmd = cmd.FieldValue(f, val)
@@ -93,7 +101,9 @@ func (v *ValkeyStore) HSet(ctx context.Context, key string, fields map[string]st
 	return nil
 }
 
-func (v *ValkeyStore) Incr(ctx context.Context, key string) (int64, error) {
+func (v *ValkeyStore) Incr(ctx context.Context, key string) (_ int64, err error) {
+	ctx, end := startSpan(ctx, "incr")
+	defer end(&err)
 	val, err := v.client.Do(ctx, v.client.B().Incr().Key(key).Build()).AsInt64()
 	if err != nil {
 		return 0, fmt.Errorf("valkeystore: incr: %w", err)
@@ -101,27 +111,46 @@ func (v *ValkeyStore) Incr(ctx context.Context, key string) (int64, error) {
 	return val, nil
 }
 
-func (v *ValkeyStore) SAdd(ctx context.Context, key string, members ...string) error {
+func (v *ValkeyStore) Get(ctx context.Context, key string) (_ string, _ bool, err error) {
+	ctx, end := startSpan(ctx, "get")
+	defer end(&err)
+	val, err := v.client.Do(ctx, v.client.B().Get().Key(key).Build()).ToString()
+	if err != nil {
+		if valkey.IsValkeyNil(err) {
+			return "", false, nil
+		}
+		return "", false, fmt.Errorf("valkeystore: get: %w", err)
+	}
+	return val, true, nil
+}
+
+func (v *ValkeyStore) SAdd(ctx context.Context, key string, members ...string) (err error) {
 	if len(members) == 0 {
 		return nil
 	}
+	ctx, end := startSpan(ctx, "sadd")
+	defer end(&err)
 	if err := v.client.Do(ctx, v.client.B().Sadd().Key(key).Member(members...).Build()).Error(); err != nil {
 		return fmt.Errorf("valkeystore: sadd: %w", err)
 	}
 	return nil
 }
 
-func (v *ValkeyStore) SRem(ctx context.Context, key string, members ...string) error {
+func (v *ValkeyStore) SRem(ctx context.Context, key string, members ...string) (err error) {
 	if len(members) == 0 {
 		return nil
 	}
+	ctx, end := startSpan(ctx, "srem")
+	defer end(&err)
 	if err := v.client.Do(ctx, v.client.B().Srem().Key(key).Member(members...).Build()).Error(); err != nil {
 		return fmt.Errorf("valkeystore: srem: %w", err)
 	}
 	return nil
 }
 
-func (v *ValkeyStore) SMembers(ctx context.Context, key string) ([]string, error) {
+func (v *ValkeyStore) SMembers(ctx context.Context, key string) (_ []string, err error) {
+	ctx, end := startSpan(ctx, "smembers")
+	defer end(&err)
 	s, err := v.client.Do(ctx, v.client.B().Smembers().Key(key).Build()).AsStrSlice()
 	if err != nil {
 		if valkey.IsValkeyNil(err) {
@@ -132,17 +161,21 @@ func (v *ValkeyStore) SMembers(ctx context.Context, key string) ([]string, error
 	return s, nil
 }
 
-func (v *ValkeyStore) Del(ctx context.Context, keys ...string) error {
+func (v *ValkeyStore) Del(ctx context.Context, keys ...string) (err error) {
 	if len(keys) == 0 {
 		return nil
 	}
+	ctx, end := startSpan(ctx, "del")
+	defer end(&err)
 	if err := v.client.Do(ctx, v.client.B().Del().Key(keys...).Build()).Error(); err != nil {
 		return fmt.Errorf("valkeystore: del: %w", err)
 	}
 	return nil
 }
 
-func (v *ValkeyStore) AppendStage(ctx context.Context, metaKey string, expected int64, newStageFields map[string]string, newStageMetaKey string) (int64, error) {
+func (v *ValkeyStore) AppendStage(ctx context.Context, metaKey string, expected int64, newStageFields map[string]string, newStageMetaKey string) (_ int64, err error) {
+	ctx, end := startSpan(ctx, "append_stage")
+	defer end(&err)
 	args := make([]string, 0, 1+len(newStageFields)*2)
 	args = append(args, strconv.FormatInt(expected, 10))
 	for f, val := range newStageFields {
