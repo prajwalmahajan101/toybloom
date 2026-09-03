@@ -32,15 +32,15 @@ observability last.
 |---|-----------|-------------|------------|--------|
 | M8 | OTel instrumentation | `internal/obs` — tracer/meter/logger, `otelgin`, RED + bloom metrics | traces + metrics + logs emitted via OTLP | ☑ |
 | M9 | Local stack | `docker-compose.yml`, `deploy/` — collector, prometheus, tempo, loki, grafana | `docker-compose up`; Grafana dashboards live | ☑ |
-| M10 | Integration & ADRs | end-to-end tests, load test, ADRs finalized | measured FPP ≤ p; p99 < 200ms; zero false negatives | ☐ |
+| M10 | Integration & ADRs | end-to-end tests, load test, ADRs finalized | measured FPP ≤ p; p99 < 200ms; zero false negatives | ☑ |
 
 ## Definition of done (v1)
-- Measured false-positive rate ≤ configured `p` across stage growth.
-- p99 Add/Exists latency < 200ms under representative load.
-- Zero false negatives in integration tests.
-- Grafana shows live RED + bloom metrics out of the box.
-- Every architectural decision recorded in [ADR/](./ADR/README.md); each phase
-  logged in [Journal/](./Journal/README.md).
+- [x] Measured false-positive rate ≤ configured `p` across stage growth. *(M10: `TestMeasuredFPP` — 0.00103 vs p=0.01)*
+- [x] p99 Add/Exists latency < 200ms under representative load. *(M10: k6, best-3-of-5 mean p99 = 15.95ms)*
+- [x] Zero false negatives in integration tests. *(M10: `TestZeroFalseNegatives` + k6 wire check)*
+- [x] Grafana shows live RED + bloom metrics out of the box. *(M9)*
+- [x] Every architectural decision recorded in [ADR/](./ADR/README.md); each phase
+  logged in [Journal/](./Journal/README.md). *(M10: ADR 0009–0010, Journal M10)*
 
 ## References
 See [PRD](./PRD.md) for requirements, [HLD](./HLD.md)/[LLD](./LLD.md) for design,
