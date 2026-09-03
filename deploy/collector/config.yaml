@@ -1,0 +1,55 @@
+# OpenTelemetry Collector — the single seam between the app and the backends
+# (ADR 0005). The app emits one OTLP/gRPC stream; the Collector fans it out to
+# Prometheus (metrics), Tempo (traces), and Loki (logs). Backends are reroutable
+# here without touching the app.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  # Guard the Collector's own memory before the batcher; drops rather than OOMs.
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+    spike_limit_mib: 64
+  batch:
+    timeout: 5s
+
+exporters:
+  # Metrics are exposed in Prometheus/OpenMetrics format for Prometheus to scrape.
+  # enable_open_metrics carries exemplars (trace_id) through to the /metrics page,
+  # which is what powers the p99 → trace jump in Grafana.
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    enable_open_metrics: true
+    resource_to_telemetry_conversion:
+      enabled: true
+
+  # Traces to Tempo over OTLP/gRPC.
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+  # Logs to Loki's native OTLP ingest endpoint (Loki 3.x).
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlp/tempo]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/loki]
