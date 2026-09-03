@@ -17,18 +17,31 @@ type Config struct {
 	RequestTimeout  time.Duration
 	MaxBodyBytes    int64
 	ShutdownTimeout time.Duration
+
+	// Observability. ServiceName labels every span/metric/log; ObsExporter picks
+	// the telemetry sink: "otlp" (Collector, ADR 0005), "stdout" (local verify),
+	// or "none" (SDK off). OTLP endpoint/sampler come from standard OTEL_* env
+	// vars, read by the SDK directly — not duplicated here.
+	ServiceName string
+	ObsExporter string
+	// ObsMaxFilterGauges caps how many per-filter fill_ratio/estimated_fpp series
+	// are emitted, bounding the unbounded `filter` label's cardinality (ADR 0008).
+	ObsMaxFilterGauges int
 }
 
 // Load reads configuration from the environment, applying a safe default for
 // any unset variable, so Load never fails.
 func Load() Config {
 	return Config{
-		Port:            envStr("PORT", "8080"),
-		ValkeyAddr:      envStr("VALKEY_ADDR", "localhost:6379"),
-		LogLevel:        envStr("LOG_LEVEL", "info"),
-		RequestTimeout:  envDuration("REQUEST_TIMEOUT", 5*time.Second),
-		MaxBodyBytes:    envInt64("MAX_BODY_BYTES", 1<<20), // 1 MiB
-		ShutdownTimeout: envDuration("SHUTDOWN_TIMEOUT", 10*time.Second),
+		Port:               envStr("PORT", "8080"),
+		ValkeyAddr:         envStr("VALKEY_ADDR", "localhost:6379"),
+		LogLevel:           envStr("LOG_LEVEL", "info"),
+		RequestTimeout:     envDuration("REQUEST_TIMEOUT", 5*time.Second),
+		MaxBodyBytes:       envInt64("MAX_BODY_BYTES", 1<<20), // 1 MiB
+		ShutdownTimeout:    envDuration("SHUTDOWN_TIMEOUT", 10*time.Second),
+		ServiceName:        envStr("OTEL_SERVICE_NAME", "toybloom"),
+		ObsExporter:        envStr("OBS_EXPORTER", "stdout"),
+		ObsMaxFilterGauges: int(envInt64("OBS_MAX_FILTER_GAUGES", 100)),
 	}
 }
 
