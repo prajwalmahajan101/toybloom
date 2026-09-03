@@ -16,3 +16,5 @@ old one is not deleted.
 | [0006](./0006-api-contract-and-client-architecture.md) | API contract and client architecture | Accepted |
 | [0007](./0007-otel-instrumentation-boundaries.md) | OTel instrumentation boundaries (pkg purity, cardinality, id unification) | Accepted |
 | [0008](./0008-per-filter-gauge-cardinality.md) | Per-filter gauges with a bounded cardinality cap (amends 0007) | Accepted |
+| [0009](./0009-testing-strategy.md) | Testing strategy: layered pyramid with build-tag isolation | Accepted |
+| [0010](./0010-load-testing-methodology.md) | Load-testing methodology: k6 with a p99<200ms gate | Accepted |
