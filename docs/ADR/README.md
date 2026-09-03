@@ -13,3 +13,6 @@ old one is not deleted.
 | [0003](./0003-bitmap-sharding.md) | Shard each stage bitmap into 4MB keys | Accepted |
 | [0004](./0004-double-hashing.md) | Derive k positions via double hashing (Kirsch–Mitzenmacher) | Accepted |
 | [0005](./0005-observability-otel-lgtm.md) | OpenTelemetry → Collector → Prometheus/Tempo/Loki + Grafana | Accepted |
+| [0006](./0006-api-contract-and-client-architecture.md) | API contract and client architecture | Accepted |
+| [0007](./0007-otel-instrumentation-boundaries.md) | OTel instrumentation boundaries (pkg purity, cardinality, id unification) | Accepted |
+| [0008](./0008-per-filter-gauge-cardinality.md) | Per-filter gauges with a bounded cardinality cap (amends 0007) | Accepted |
