@@ -1,0 +1,41 @@
+# Loki, monolithic single-node mode: filesystem storage, no auth, native OTLP
+# ingest (the Collector pushes logs to /otlp). Dev stack sizing.
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+
+common:
+  instance_addr: 127.0.0.1
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    instance_addr: 127.0.0.1
+    # memberlist (even for a single node) so every ring — ingester AND the
+    # query-scheduler — registers in the same place. The inmemory kvstore leaves
+    # the scheduler ring empty on the read path ("0 healthy replicas").
+    kvstore:
+      store: memberlist
+
+memberlist:
+  bind_addr: ["127.0.0.1"]
+
+schema_config:
+  configs:
+    - from: 2024-01-01
+      store: tsdb
+      object_store: filesystem
+      schema: v13
+      index:
+        prefix: index_
+        period: 24h
+
+limits_config:
+  # Allow OTLP structured metadata (trace_id etc.) to attach to log lines so the
+  # log → trace link works in Grafana.
+  allow_structured_metadata: true
+  volume_enabled: true
