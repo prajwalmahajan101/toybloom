@@ -14,24 +14,24 @@ observability last.
 | M1 | Sizing math | `internal/bloom/sizing.go` — `OptimalM/K`, `StageError`, `StageCapacity` | unit tests match self-check table | ☑ |
 | M2 | Double hashing | `internal/bloom/hash.go` — `hashParts`, `positions` | k positions, each `< m`, `h2==0` guarded | ☑ |
 | M3 | Sharding | `internal/bloom/shard.go` — `ShardBits`, `shardFor`, `groupByShard` | round-trip index↔(shard,offset) | ☑ |
-| M4 | BitStore interface | `internal/store/store.go` — interface only | compiles; documented contract | ☐ |
-| M5 | SBF core | `internal/bloom/filter.go` — `New/Load/Add/Exists/Stats/Drop`, stage growth | works against an in-memory fake store | ☐ |
+| M4 | BitStore interface | `pkg/store/store.go` — interface only | compiles; documented contract | ☑ |
+| M5 | SBF core | `pkg/bloom/filter.go` — `New/Load/Add/Exists/Stats/Drop`, stage growth | works against an in-memory fake store | ☑ |
 
 ## Phase 2 — Storage
 | # | Milestone | Deliverable | Acceptance | Status |
 |---|-----------|-------------|------------|--------|
-| M6 | ValkeyStore | `internal/store/valkey.go` — pipelined SETBIT/GETBIT, HSET/HGETALL, INCR, Lua stage-append | integration test vs. real Valkey (testcontainers) | ☐ |
+| M6 | ValkeyStore | `pkg/store/valkey.go` — pipelined SETBIT/GETBIT, HSET/HGETALL, INCR, Lua stage-append | integration test vs. real Valkey (testcontainers) | ☑ |
 
 ## Phase 3 — Transport
 | # | Milestone | Deliverable | Acceptance | Status |
 |---|-----------|-------------|------------|--------|
-| M7 | Gin REST | `cmd/server`, `internal/api` — 5 endpoints, error envelope, validation | endpoint tests green; curl flow works | ☐ |
+| M7 | Gin REST | `cmd/server`, `internal/api` — 5 endpoints, error envelope, validation | endpoint tests green; curl flow works | ☑ |
 
 ## Phase 4 — Observability & ops
 | # | Milestone | Deliverable | Acceptance | Status |
 |---|-----------|-------------|------------|--------|
-| M8 | OTel instrumentation | `internal/obs` — tracer/meter/logger, `otelgin`, RED + bloom metrics | traces + metrics + logs emitted via OTLP | ☐ |
-| M9 | Local stack | `docker-compose.yml`, `deploy/` — collector, prometheus, tempo, loki, grafana | `docker-compose up`; Grafana dashboards live | ☐ |
+| M8 | OTel instrumentation | `internal/obs` — tracer/meter/logger, `otelgin`, RED + bloom metrics | traces + metrics + logs emitted via OTLP | ☑ |
+| M9 | Local stack | `docker-compose.yml`, `deploy/` — collector, prometheus, tempo, loki, grafana | `docker-compose up`; Grafana dashboards live | ☑ |
 | M10 | Integration & ADRs | end-to-end tests, load test, ADRs finalized | measured FPP ≤ p; p99 < 200ms; zero false negatives | ☐ |
 
 ## Definition of done (v1)
