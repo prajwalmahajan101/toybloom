@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/prajwalmahajan101/toybloom/internal/core/logger"
 	"github.com/prajwalmahajan101/toybloom/internal/core/response"
+	"github.com/prajwalmahajan101/toybloom/internal/obs"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // gin stores per-request values under string keys; centralize the key + access
@@ -27,11 +29,17 @@ func getCorrelationID(c *gin.Context) string {
 	return ""
 }
 
-// CorrelationID assigns or propagates a correlation id per request.
+// CorrelationID assigns or propagates a correlation id per request. When a trace
+// is active — otelgin runs first, so it usually is — the id IS the trace id, so
+// logs, the X-Correlation-ID response header, and the distributed trace all
+// share one identifier. Without a trace it honours an incoming header, then
+// falls back to a fresh UUID.
 func CorrelationID() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		id := c.GetHeader("X-Correlation-ID")
-		if id == "" {
+		if sc := trace.SpanContextFromContext(c.Request.Context()); sc.HasTraceID() {
+			id = sc.TraceID().String()
+		} else if id == "" {
 			id = uuid.New().String()
 		}
 		setCorrelationID(c, id)
@@ -50,12 +58,31 @@ func RequestLogger(base *slog.Logger) gin.HandlerFunc {
 
 		c.Next()
 
-		reqLog.Info("request",
+		// InfoContext (not Info) so the otelslog bridge stamps the record with
+		// the active trace_id/span_id, correlating this log line to its trace.
+		reqLog.InfoContext(c.Request.Context(), "request",
 			"method", c.Request.Method,
 			"path", c.FullPath(),
 			"status", c.Writer.Status(),
 			"latency_ms", time.Since(start).Milliseconds(),
 		)
+	}
+}
+
+// HTTPMetrics records the RED latency datapoint per request on the OTel meter.
+// It runs inside otelgin, so the request context already carries the server
+// span — the histogram gets a trace exemplar for free.
+func HTTPMetrics(inst *obs.Instruments) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		c.Next()
+
+		route := c.FullPath()
+		if route == "" {
+			route = "unmatched" // bound label cardinality from unmatched 404s
+		}
+		inst.RecordRequest(c.Request.Context(), route, c.Request.Method,
+			c.Writer.Status(), time.Since(start).Seconds())
 	}
 }
 

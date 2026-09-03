@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prajwalmahajan101/toybloom/internal/core/config"
 	"github.com/prajwalmahajan101/toybloom/internal/core/logger"
+	"github.com/prajwalmahajan101/toybloom/internal/obs"
 	"github.com/prajwalmahajan101/toybloom/internal/service"
 	"github.com/prajwalmahajan101/toybloom/pkg/store"
 )
@@ -18,12 +19,16 @@ func setupRouter(t *testing.T) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 	ms := store.NewMemStore()
-	svc := service.New(ms)
+	svc := service.New(ms, nil, 0)
 	h := NewHandler(svc)
 	hh := NewHealthHandler(ms)
 	cfg := config.Load()
-	lg := logger.New("error") // quiet logs during tests
-	return NewRouter(h, hh, cfg, lg)
+	lg := logger.New("error")         // quiet logs during tests
+	inst, err := obs.NewInstruments() // no-op meter (Setup not called in tests)
+	if err != nil {
+		t.Fatalf("obs instruments: %v", err)
+	}
+	return NewRouter(h, hh, cfg, lg, inst)
 }
 
 func createFilter(t *testing.T, r *gin.Engine, body string) *httptest.ResponseRecorder {
