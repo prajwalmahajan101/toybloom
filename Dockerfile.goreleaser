@@ -1,0 +1,12 @@
+# Minimal runtime image for GoReleaser: it COPYs the binary GoReleaser already
+# built (see `dockers:` in .goreleaser.yaml) rather than compiling from source.
+# The repo-root Dockerfile is the from-source build used by docker-compose; this
+# one exists only so release images reuse GoReleaser's cross-compiled binary.
+#
+# Same distroless-static/nonroot base as the main Dockerfile: no shell, no libc,
+# no package manager in the shipped image.
+FROM gcr.io/distroless/static:nonroot
+COPY toybloom /toybloom
+EXPOSE 8080
+USER nonroot:nonroot
+ENTRYPOINT ["/toybloom"]

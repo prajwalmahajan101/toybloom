@@ -1,0 +1,103 @@
+# GoReleaser config for toybloom. Docs: https://goreleaser.com — schema v2.
+#
+# Outputs per tag (pushed by .github/workflows/release.yml):
+#   - `toybloom` server binary for linux/darwin × amd64/arm64
+#   - one tar.gz archive per platform + a SHA256SUMS checksum file
+#   - a ghcr.io container image tagged with the version and `latest`
+#   - a GitHub Release with a curated header + grouped, auto-generated changelog
+version: 2
+
+project_name: toybloom
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: toybloom
+    main: ./cmd/server
+    binary: toybloom
+    env:
+      - CGO_ENABLED=0 # static binary → runs on the distroless static base
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      # Trim symbols/DWARF and stamp main.version (the only build-time var).
+      - -s -w
+      - -X main.version={{ .Version }}
+
+archives:
+  - id: default
+    ids: [toybloom]
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+      - docs/ROADMAP.md
+
+checksum:
+  name_template: "SHA256SUMS"
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-SNAPSHOT-{{ .ShortCommit }}"
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - '^Merge '
+      - '^test[:(]'
+      - '^refactor[:(]'
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 0
+    - title: Fixes
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 1
+    - title: Docs
+      regexp: '^.*?docs(\(.+\))??!?:.+$'
+      order: 2
+    - title: Other
+      order: 999
+
+dockers:
+  - image_templates:
+      - "ghcr.io/prajwalmahajan101/toybloom:{{ .Version }}"
+      - "ghcr.io/prajwalmahajan101/toybloom:latest"
+    dockerfile: Dockerfile.goreleaser
+    goos: linux
+    goarch: amd64
+    build_flag_templates:
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.source=https://github.com/prajwalmahajan101/toybloom"
+      - "--label=org.opencontainers.image.licenses=MIT"
+
+release:
+  github:
+    owner: prajwalmahajan101
+    name: toybloom
+  draft: false
+  prerelease: auto
+  name_template: "toybloom {{ .Tag }}"
+  header: |
+    toybloom {{ .Tag }} — scalable Bloom filter as a service over Valkey.
+
+    Ships a `toybloom` server binary (linux/darwin × amd64/arm64) and a
+    `ghcr.io/prajwalmahajan101/toybloom:{{ .Version }}` container image.
+    Verify downloads against the published `SHA256SUMS`. Curated highlights
+    are in [`CHANGELOG.md`](./CHANGELOG.md); design rationale in the
+    [ADRs](./docs/ADR/README.md).
+  footer: |
+    ---
+    **Full Changelog:** https://github.com/prajwalmahajan101/toybloom/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+    Built with [GoReleaser](https://goreleaser.com); config in [`.goreleaser.yaml`](./.goreleaser.yaml).
