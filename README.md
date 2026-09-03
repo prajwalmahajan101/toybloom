@@ -48,6 +48,21 @@ curl -X POST localhost:8080/v1/filters/seen/items -d '{"value":"user-42"}'
 curl localhost:8080/v1/filters/seen/items/user-42        # {"exists":true}
 ```
 
+## Benchmarks
+Load-tested with [k6](https://k6.io) against the full compose stack (ramping to
+20 VUs, ~50/50 Add/Exists on a 1M-capacity filter). SLO: `p(99) < 200ms`,
+`errors < 0.1%`. Best 3 of 5 runs (2026-09-03):
+
+| Run | p99 | p95 | median | throughput | errors |
+|-----|-----|-----|--------|------------|--------|
+| best | **14.68ms** | 8.87ms | 4.16ms | 3411 req/s | 0.00% |
+| 2nd | 14.97ms | 9.94ms | 4.39ms | 3196 req/s | 0.00% |
+| 3rd | 18.21ms | 12.20ms | 5.26ms | 2667 req/s | 0.00% |
+
+Best-3 mean p99 ≈ **15.95ms** — ~12.5× under the 200ms budget; 1.2M+ total
+requests across 5 runs, 0 failed, 0 false negatives. Full benchmark (all 5 runs)
+in [`test/load/RESULTS.md`](./test/load/RESULTS.md); run it with `make load`.
+
 ## Layout
 ```
 cmd/server        Gin REST entrypoint (+ OTel bootstrap)

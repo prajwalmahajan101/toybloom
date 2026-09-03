@@ -18,4 +18,4 @@ belong in code or commit messages.
 | M7 | Gin REST | `M7.md` | pending |
 | M8 | OTel instrumentation | `M8.md` | pending |
 | M9 | docker-compose + Grafana/Prometheus/Tempo/Loki | `M9.md` | pending |
-| M10 | Integration tests + ADRs | `M10.md` | pending |
+| M10 | Integration tests + ADRs | `M10.md` | done |
